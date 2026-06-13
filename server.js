@@ -12,6 +12,7 @@ const kullanicilar = {
     "yayin2": "5678"
 };
 
+// Dosya ismini her seferinde değişecek şekilde (zaman damgalı) ayarlar
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = 'public/uploads';
@@ -19,7 +20,7 @@ const storage = multer.diskStorage({
         cb(null, dir);
     },
     filename: (req, file, cb) => {
-        cb(null, req.body.user + path.extname(file.originalname));
+        cb(null, req.body.user + '_' + Date.now() + path.extname(file.originalname));
     }
 });
 const upload = multer({ storage: storage });
@@ -31,6 +32,7 @@ const style = `<style>
     button { width: 100%; padding: 12px; background: #0095f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
 </style>`;
 
+// Giriş Sayfası
 app.get('/', (req, res) => {
     res.send(`<html><head>${style}</head><body><div class="card">
         <h2>Resul Müzik Mix Panel</h2>
@@ -41,6 +43,7 @@ app.get('/', (req, res) => {
         </form></div></body></html>`);
 });
 
+// Giriş Kontrolü
 app.post('/login', (req, res) => {
     const { user, pass } = req.body;
     if (kullanicilar[user] && kullanicilar[user] === pass) {
@@ -49,7 +52,7 @@ app.post('/login', (req, res) => {
             <p>Hoş geldin, ${user}</p>
             <form action="/upload" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="user" value="${user}">
-                <input type="file" name="resim" accept="image/*" required>
+                <input type="file" name="resim" accept="image/*,video/*" required>
                 <button type="submit">Resmi Güncelle</button>
             </form></div></body></html>`);
     } else {
@@ -57,11 +60,29 @@ app.post('/login', (req, res) => {
     }
 });
 
+// Yükleme İşlemi
 app.post('/upload', upload.single('resim'), (req, res) => {
     res.send(`<html><head>${style}</head><body><div class="card">
         <h2>Resul Müzik Mix Panel</h2>
         <p>Resim başarıyla güncellendi!</p>
         <a href="/">Panele Dön</a></div></body></html>`);
+});
+
+// OBS İÇİN ÖNEMLİ: Son yüklenen dosyayı otomatik bulan sistem
+app.get('/son-resim/:user', (req, res) => {
+    const user = req.params.user;
+    const dir = 'public/uploads';
+    if (!fs.existsSync(dir)) return res.status(404).send('Klasör bulunamadı');
+    
+    const files = fs.readdirSync(dir);
+    const userFiles = files.filter(f => f.startsWith(user + '_')).sort();
+    
+    if (userFiles.length > 0) {
+        // En son yüklenen (en büyük zaman damgalı) dosyayı gönder
+        res.redirect('/uploads/' + userFiles[userFiles.length - 1]);
+    } else {
+        res.status(404).send('Henüz resim yüklenmemiş.');
+    }
 });
 
 app.listen(10000);
