@@ -7,10 +7,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-const kullanicilar = {
-    "yayin1": "1234",
-    "yayin2": "5678"
-};
+const kullanicilar = { "yayin1": "1234", "yayin2": "5678" };
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -43,7 +40,7 @@ app.post('/upload', upload.single('resim'), (req, res) => {
     res.send("Yüklendi! <a href='/'>Geri dön</a>");
 });
 
-// OBS İÇİN AGRESİF YENİLEME SİSTEMİ
+// TASARIMLI VE OTOMATİK YENİLEYEN SİSTEM
 app.get('/son-resim/:user', (req, res) => {
     const user = req.params.user;
     const dir = 'public/uploads';
@@ -53,19 +50,27 @@ app.get('/son-resim/:user', (req, res) => {
     
     if (files.length > 0) {
         const sonDosya = files[files.length - 1];
-        // OBS'e her saniye sayfayı zorla yenileme komutu gönderiyoruz
+        
+        // Buraya Instagram tasarımını ekledik
         res.send(`
             <html>
             <head>
                 <meta http-equiv="refresh" content="1">
+                <style>
+                    body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+                    .instagram-container { width: 100%; height: 100%; border: 2px solid #333; box-sizing: border-box; }
+                    img { width: 100%; height: 100%; object-fit: contain; }
+                </style>
             </head>
-            <body style="margin:0; padding:0; overflow:hidden;">
-                <img src="/uploads/${sonDosya}?t=${Date.now()}" style="width:100%; height:100%; object-fit:contain;">
+            <body>
+                <div class="instagram-container">
+                    <img src="/uploads/${sonDosya}?t=${Date.now()}">
+                </div>
             </body>
             </html>
         `);
     } else {
-        res.send("Resim yok");
+        res.send("<h1 style='color:white; text-align:center;'>Resim bekleniyor...</h1>");
     }
 });
 
