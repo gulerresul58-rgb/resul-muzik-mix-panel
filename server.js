@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 1. GİRİŞ PANELİ (Instagram Tasarımı + Resul Müzik Mix Panel Yazısı)
+// GİRİŞ PANELİ (Sadece senin logonla güncellendi)
 app.get('/', (req, res) => {
     res.send(`
         <html>
@@ -29,16 +29,14 @@ app.get('/', (req, res) => {
             <style>
                 body { background: #fafafa; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
                 .login-card { background: white; border: 1px solid #dbdbdb; width: 350px; padding: 40px; text-align: center; }
-                .logo { font-family: cursive; font-size: 2em; margin-bottom: 5px; }
-                .panel-title { font-size: 1.2em; color: #555; margin-bottom: 20px; }
-                input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; box-sizing: border-box; }
-                button { width: 100%; padding: 10px; background: #0095f6; color: white; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; }
+                .logo { font-size: 1.8em; font-weight: bold; color: #333; margin-bottom: 25px; }
+                input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; box-sizing: border-box; border-radius: 3px; }
+                button { width: 100%; padding: 10px; background: #0095f6; color: white; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; border-radius: 3px; }
             </style>
         </head>
         <body>
             <div class="login-card">
-                <div class="logo">Instagram</div>
-                <div class="panel-title">Resul Müzik Mix Panel</div>
+                <div class="logo">Resul Müzik Mix Panel</div>
                 <form action="/login" method="POST">
                     <input type="text" name="user" placeholder="Kullanıcı Adı">
                     <input type="password" name="pass" placeholder="Şifre">
@@ -61,7 +59,7 @@ app.post('/upload', upload.single('resim'), (req, res) => {
     res.send("Yüklendi! <a href='/'>Geri dön</a>");
 });
 
-// 2. OBS EKRANI (Tertemiz, anında yenilenen sadece resim)
+// OBS EKRANI
 app.get('/son-resim/:user', (req, res) => {
     const user = req.params.user;
     const dir = 'public/uploads';
