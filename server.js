@@ -1,31 +1,34 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public')); // Resimler burada duracak
 
-// Giriş ekranı (Basit bir form)
+// Yayıncıların resimlerini tutacak yer
+let yayinVerileri = {
+    "yayin1": "https://i.imgur.com/ornek1.jpg" // Başlangıç resmi
+};
+
+// 1. GİRİŞ EKRANI
 app.get('/', (req, res) => {
-    res.send(`
-        <h1>M-Zik Panel Giriş</h1>
-        <form action="/login" method="POST">
-            <input type="text" name="username" placeholder="Kullanıcı Adı" required><br>
-            <input type="password" name="password" placeholder="Şifre" required><br>
-            <button type="submit">Giriş Yap</button>
-        </form>
-    `);
+    res.send(`<h1>Giriş Yap</h1><form action="/login" method="POST"><input type="text" name="user"><input type="password" name="pass"><button>Giriş</button></form>`);
 });
 
-// Giriş kontrolü (Buraya yayıncı isimlerini ekleyeceğiz)
+// 2. YÖNETİM PANELİ (Resim Değiştirme)
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    // Buraya örnek olarak bir kullanıcı ekliyoruz, sonra çoğaltacağız
-    if (username === "yayin1" && password === "1234") {
-        res.send("<h1>Hoş geldin! Resim yükleme ekranı buraya gelecek.</h1>");
-    } else {
-        res.send("Hatalı giriş! <a href='/'>Geri dön</a>");
-    }
+    if(req.body.user === "yayin1" && req.body.pass === "1234") {
+        res.send(`<h1>Panel</h1><form action="/guncelle" method="POST"><input type="text" name="yeniResim" placeholder="Resim Linki"><button>Güncelle</button></form>`);
+    } else { res.send("Hatalı!"); }
 });
 
-app.listen(10000, () => console.log('Sistem çalışıyor...'));
+// 3. RESMİ GÜNCELLEME
+app.post('/guncelle', (req, res) => {
+    yayinVerileri["yayin1"] = req.body.yeniResim;
+    res.send("Resim güncellendi! OBS'te değişecektir.");
+});
+
+// 4. OBS İÇİN ÖZEL LİNK (Bunu OBS Browser Source'a ekleyeceksin)
+app.get('/overlay/yayin1', (req, res) => {
+    res.send(`<img src="${yayinVerileri["yayin1"]}" style="width:100%;">`);
+});
+
+app.listen(10000);
