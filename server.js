@@ -4,11 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 
-// --- DİZİN KONTROLÜ (Render hata önleme) ---
+// --- DİZİN KONTROLÜ ---
 const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+if (!fs.existsSync(uploadDir)) { fs.mkdirSync(uploadDir, { recursive: true }); }
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -17,10 +15,7 @@ const dbFile = path.join(__dirname, 'veriler.json');
 
 let veriler = { kullanicilar: { "admin": "admin123" }, ayarlari: {} };
 if (fs.existsSync(dbFile)) {
-    try {
-        const data = fs.readFileSync(dbFile, 'utf8');
-        if (data) veriler = JSON.parse(data);
-    } catch (e) { console.error("JSON okuma hatası:", e); }
+    try { const data = fs.readFileSync(dbFile, 'utf8'); if (data) veriler = JSON.parse(data); } catch (e) { console.error("JSON okuma hatası:", e); }
 }
 function save() { fs.writeFileSync(dbFile, JSON.stringify(veriler, null, 2)); }
 
@@ -67,16 +62,23 @@ app.get('/', (req, res) => res.send(layout(`<h3>Giriş Yap</h3><form action="/lo
 
 app.post('/login', (req, res) => {
     const { user, pass } = req.body;
-    if (veriler.kullanicilar[user] === pass) res.redirect(user === 'admin' ? '/admin-paneli' : '/panel?user=' + user);
-    else res.send("Hatalı!");
+    if (veriler.kullanicilar[user] === pass) {
+        res.redirect(user === 'admin' ? '/admin-paneli' : '/panel?user=' + user);
+    } else { res.send("Hatalı!"); }
+});
+
+// --- ADMIN PANELİ (EKLENDİ) ---
+app.get('/admin-paneli', (req, res) => {
+    let list = Object.keys(veriler.kullanicilar).map(u => `
+        <div style="padding:10px; border-bottom:1px solid #eee;">${u}</div>`).join('');
+    res.send(layout(`<h1>Yönetim</h1><h3>Kullanıcılar:</h3>${list}<br><a href="/">Çıkış</a>`, "admin", true));
 });
 
 app.get('/panel', (req, res) => {
-    const { user, view, msg } = req.query;
+    const { user, msg } = req.query;
     if(!user) return res.redirect('/');
     const d = getAyarlar(user);
     const obsLink = `https://m-zik-paneli.onrender.com/yayin/${user}`;
-
     let content = `
         <div class="profile-ring"><img src="/uploads/${user}_son.jpg" onerror="this.src='https://via.placeholder.com/100'"></div>
         ${msg ? `<div class="toast">✅ ${msg}</div>` : ''}
