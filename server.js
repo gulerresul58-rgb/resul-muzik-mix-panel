@@ -121,7 +121,29 @@ app.post('/update-yayin', async (req, res) => {
 
 app.get('/yayin/:user', (req, res) => res.send(`
     <html><head><link href="https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Poppins&family=Oswald&family=Raleway&family=Bebas+Neue&family=Lobster&family=Dancing+Script&family=Pacifico&family=Anton&family=Playfair+Display&family=Ubuntu&family=Merriweather&family=Nunito&display=swap" rel="stylesheet"><style>body{margin:0;overflow:hidden;background:#000;width:854px;height:480px;} #img{position:absolute;width:854px;height:480px;object-fit:cover;z-index:1;} #y{position:absolute;z-index:2;transform:translate(-50%,-50%);text-shadow:2px 2px 4px #000;font-weight:bold;white-space:nowrap;}</style></head>
-    <body><img id="img" src="/uploads/${req.params.user}_son.jpg"><div id="y"></div><script>setInterval(async()=>{try{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');y.innerText=d.metin;y.style.fontSize=d.boyut+'px';y.style.color=d.renk;y.style.fontFamily=d.font;y.style.top=d.dikey+'%';y.style.left=d.yatay+'%';}catch(e){}},2000)</script></body></html>
+    <body>
+        <img id="img" src="/uploads/${req.params.user}_son.jpg?v=${Date.now()}">
+        <div id="y"></div>
+        <script>
+            setInterval(async()=>{
+                try{
+                    const r=await fetch('/api/ayarlar/${req.params.user}');
+                    const d=await r.json();
+                    const y=document.getElementById('y');
+                    y.innerText=d.metin;
+                    y.style.fontSize=d.boyut+'px';
+                    y.style.color=d.renk;
+                    y.style.fontFamily=d.font;
+                    y.style.top=d.dikey+'%';
+                    y.style.left=d.yatay+'%';
+                    const img = document.getElementById('img');
+                    const newSrc = '/uploads/${req.params.user}_son.jpg?t=' + new Date().getTime();
+                    if(img.src.split('?')[0] !== '/uploads/${req.params.user}_son.jpg') img.src = newSrc;
+                    else img.src = newSrc;
+                }catch(e){}
+            }, 2000)
+        </script>
+    </body></html>
 `));
 
 app.get('/api/ayarlar/:user', async (req, res) => {
