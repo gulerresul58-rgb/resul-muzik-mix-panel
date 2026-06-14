@@ -5,13 +5,18 @@ const fs = require('fs');
 const { MongoClient } = require('mongodb');
 const app = express();
 
-// MongoDB Bağlantısı (Render ortam değişkeninden alıyor, yoksa senin linki kullanıyor)
 const uri = process.env.MONGO_URI || "mongodb+srv://resul3402:resul0234@cluster0.9jn6f7f.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
 
+// En kritik kısım burası: Veritabanı yoksa veya boşsa otomatik oluşturur
 async function getDb() {
     if (!client.topology || !client.topology.isConnected()) await client.connect();
-    return client.db("resul_muzik").collection("data");
+    const db = client.db("resul_muzik").collection("data");
+    const check = await db.findOne({ id: "veriler" });
+    if (!check) {
+        await db.insertOne({ id: "veriler", kullanicilar: { "admin": "admin123" }, ayarlari: {} });
+    }
+    return db;
 }
 
 const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -60,7 +65,7 @@ app.post('/login', async (req, res) => {
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
     const { user, pass } = req.body;
-    if (doc && doc.kullanicilar[user] === pass) res.redirect('/panel?user=' + user);
+    if (doc.kullanicilar[user] === pass) res.redirect('/panel?user=' + user);
     else res.send("Hatalı giriş!");
 });
 
@@ -68,7 +73,7 @@ app.get('/panel', async (req, res) => {
     const { user, view } = req.query;
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
-    const d = (doc && doc.ayarlari && doc.ayarlari[user]) ? doc.ayarlari[user] : { metin: "Resul Müzik", boyut: 40, font: "Arial", renk: "#ffffff", dikey: 50, yatay: 50 };
+    const d = (doc.ayarlari && doc.ayarlari[user]) ? doc.ayarlari[user] : { metin: "Resul Müzik", boyut: 40, font: "Arial", renk: "#ffffff", dikey: 50, yatay: 50 };
     
     let content = !view ? `<h2>Hoş geldin, ${user}</h2>
         ${user === 'admin' ? `<p>OBS Linkin:<br><input type="text" value="https://${req.headers.host}/yayin/${user}" readonly onclick="this.select()"></p>` : ''}
@@ -113,14 +118,13 @@ app.get('/yayin/:user', (req, res) => res.send(`<html><body style="margin:0;"><d
 app.get('/api/ayarlar/:user', async (req, res) => {
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
-    res.json((doc && doc.ayarlari && doc.ayarlari[req.params.user]) ? doc.ayarlari[req.params.user] : { metin: "Resul Müzik", boyut: 40, font: "Arial", renk: "#ffffff", dikey: 50, yatay: 50 });
+    res.json((doc.ayarlari && doc.ayarlari[req.params.params]) ? doc.ayarlari[req.params.user] : { metin: "Resul Müzik", boyut: 40, font: "Arial", renk: "#ffffff", dikey: 50, yatay: 50 });
 });
 
 app.get('/admin-paneli', async (req, res) => {
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
-    const users = doc ? doc.kullanicilar : { "admin": "admin123" };
-    let list = Object.keys(users).map(u => `<div>${u} ${u!=='admin' ? `<a href="/kisi-sil/${u}" style="color:red;">Sil</a>` : ''}</div>`).join('');
+    let list = Object.keys(doc.kullanicilar).map(u => `<div>${u} ${u!=='admin' ? `<a href="/kisi-sil/${u}" style="color:red;">Sil</a>` : ''}</div>`).join('');
     res.send(layout(`<h3>Kullanıcılar</h3><form action="/kisi-ekle" method="POST"><input name="yeniUser" placeholder="İsim"><input name="yeniPass" placeholder="Şifre"><button>Ekle</button></form>${list}`, "admin", true));
 });
 
