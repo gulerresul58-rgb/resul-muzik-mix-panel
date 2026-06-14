@@ -19,10 +19,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 const upload = multer({ dest: 'public/uploads/' });
 
+const fontList = ['Arial', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Oswald', 'Raleway', 'Bebas Neue', 'Lobster', 'Dancing Script', 'Pacifico', 'Anton', 'Playfair Display', 'Ubuntu', 'Merriweather', 'Nunito', 'Impact', 'Georgia', 'Courier New', 'Verdana', 'Tahoma', 'Comic Sans MS', 'Trebuchet MS'];
+
 const layout = (content, user, isSidebar = false, isLogin = false, msg = "") => `
     <html>
     <head>
         <title>Resul Müzik Panel</title>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Poppins&family=Oswald&family=Raleway&family=Bebas+Neue&family=Lobster&family=Dancing+Script&family=Pacifico&family=Anton&family=Playfair+Display&family=Ubuntu&family=Merriweather&family=Nunito&display=swap" rel="stylesheet">
         <style>
             body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; display: flex; ${isLogin ? 'justify-content: center; align-items: center; height: 100vh;' : ''} }
             .sidebar { width: 250px; background: #fff; height: 100vh; padding: 25px; border-right: 1px solid #ddd; }
@@ -87,11 +90,7 @@ app.get('/panel', async (req, res) => {
         <form action="/update-yayin" method="POST" oninput="u()">
             <input type="hidden" name="user" value="${user}">
             <input name="metin" value="${d.metin}" id="i-metin" placeholder="Yazı">
-            <select name="font" id="i-font">
-                <option value="Arial" ${d.font=='Arial'?'selected':''}>Arial</option>
-                <option value="Impact" ${d.font=='Impact'?'selected':''}>Impact</option>
-                <option value="Georgia" ${d.font=='Georgia'?'selected':''}>Georgia</option>
-            </select>
+            <select name="font" id="i-font">${fontList.map(f => `<option value="${f}" ${d.font==f?'selected':''}>${f}</option>`).join('')}</select>
             <input name="renk" type="color" value="${d.renk}" id="i-renk">
             <label>Boyut</label><input name="boyut" type="range" min="10" max="100" value="${d.boyut}" id="i-boyut">
             <label>Dikey</label><input name="dikey" type="range" min="0" max="100" value="${d.dikey}" id="i-dikey">
@@ -121,14 +120,8 @@ app.post('/update-yayin', async (req, res) => {
 });
 
 app.get('/yayin/:user', (req, res) => res.send(`
-    <html>
-    <head><style>body{margin:0;overflow:hidden;background:#000;width:854px;height:480px;} #img{position:absolute;width:854px;height:480px;object-fit:cover;z-index:1;} #y{position:absolute;z-index:2;transform:translate(-50%,-50%);text-shadow:2px 2px 4px #000;font-weight:bold;white-space:nowrap;}</style></head>
-    <body>
-        <img id="img" src="/uploads/${req.params.user}_son.jpg">
-        <div id="y"></div>
-        <script>setInterval(async()=>{try{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');y.innerText=d.metin;y.style.fontSize=d.boyut+'px';y.style.color=d.renk;y.style.fontFamily=d.font;y.style.top=d.dikey+'%';y.style.left=d.yatay+'%';}catch(e){}},2000)</script>
-    </body>
-    </html>
+    <html><head><link href="https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Poppins&family=Oswald&family=Raleway&family=Bebas+Neue&family=Lobster&family=Dancing+Script&family=Pacifico&family=Anton&family=Playfair+Display&family=Ubuntu&family=Merriweather&family=Nunito&display=swap" rel="stylesheet"><style>body{margin:0;overflow:hidden;background:#000;width:854px;height:480px;} #img{position:absolute;width:854px;height:480px;object-fit:cover;z-index:1;} #y{position:absolute;z-index:2;transform:translate(-50%,-50%);text-shadow:2px 2px 4px #000;font-weight:bold;white-space:nowrap;}</style></head>
+    <body><img id="img" src="/uploads/${req.params.user}_son.jpg"><div id="y"></div><script>setInterval(async()=>{try{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');y.innerText=d.metin;y.style.fontSize=d.boyut+'px';y.style.color=d.renk;y.style.fontFamily=d.font;y.style.top=d.dikey+'%';y.style.left=d.yatay+'%';}catch(e){}},2000)</script></body></html>
 `));
 
 app.get('/api/ayarlar/:user', async (req, res) => {
