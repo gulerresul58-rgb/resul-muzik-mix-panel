@@ -7,29 +7,27 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+// Başlangıç kullanıcıları
 let kullanicilar = { "admin": "admin123" }; 
-let veritabani = {}; // { user: { metin, renk, boyut, konum } }
+let veritabani = {}; 
 
 const upload = multer({ dest: 'public/uploads/' });
 
-// ORTAK TASARIM (Menü ve Özelliklerin hepsi burada)
-const layout = (content, user) => `
+// ORTAK TASARIM (Admin ve Yayıncı için ortak menü)
+const layout = (content, user, isMenu = true) => `
     <html>
     <head>
         <style>
             body { background: #fafafa; font-family: sans-serif; margin: 0; display: flex; }
             .sidebar { width: 220px; background: white; border-right: 1px solid #dbdbdb; height: 100vh; padding: 20px; }
             .card { background: white; border: 1px solid #dbdbdb; width: 450px; padding: 30px; border-radius: 3px; }
-            input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; }
-            button { width: 100%; padding: 10px; background: #0095f6; color: white; border: none; font-weight: bold; cursor: pointer; }
+            input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; }
+            button { width: 100%; padding: 10px; background: #0095f6; color: white; border: none; cursor: pointer; }
+            .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
         </style>
     </head>
     <body>
-        <div class="sidebar">
-            <div style="font-weight:bold; margin-bottom:20px;">≡ RESUL MÜZİK</div>
-            <a href="${user === 'admin' ? '/admin-paneli' : '/panel?user=' + user}" style="display:block; margin-bottom:10px;">🏠 Panel</a>
-            <a href="/">🚪 Çıkış</a>
-        </div>
+        ${isMenu ? `<div class="sidebar"><h3>≡ RESUL MÜZİK</h3><a href="${user === 'admin' ? '/admin-paneli' : '/panel?user=' + user}">🏠 Panel</a><br><br><a href="/">🚪 Çıkış</a></div>` : ''}
         <div style="flex:1; display:flex; justify-content:center; align-items:center;">
             <div class="card">${content}</div>
         </div>
@@ -37,16 +35,7 @@ const layout = (content, user) => `
     </html>
 `;
 
-app.get('/', (req, res) => res.send(`
-    <body style="display:flex; justify-content:center; align-items:center; height:100vh;">
-        <form action="/login" method="POST" style="padding:40px; border:1px solid #ddd; background:white;">
-            <h3>Resul Müzik Giriş</h3>
-            <input type="text" name="user" placeholder="Kullanıcı Adı" required><br>
-            <input type="password" name="pass" placeholder="Şifre" required><br>
-            <button type="submit">Giriş Yap</button>
-        </form>
-    </body>
-`));
+app.get('/', (req, res) => res.send(layout(`<h3>Giriş Yap</h3><form action="/login" method="POST"><input type="text" name="user" placeholder="Kullanıcı"><input type="password" name="pass" placeholder="Şifre"><button type="submit">Giriş</button></form>`, "Giriş", false)));
 
 app.post('/login', (req, res) => {
     const { user, pass } = req.body;
@@ -54,14 +43,22 @@ app.post('/login', (req, res) => {
     else res.send("Hatalı!");
 });
 
-// ADMIN PANELİ
+// ADMIN PANELİ (KULLANICI LİSTESİ VE SİLME BUTONU)
 app.get('/admin-paneli', (req, res) => {
-    res.send(layout(`<h1>Admin Paneli</h1>
+    let list = Object.keys(kullanicilar).map(u => `
+        <div class="user-item">
+            <span>${u}</span>
+            ${u !== 'admin' ? `<form action="/sil" method="POST"><input type="hidden" name="user" value="${u}"><button style="background:red; width:auto; padding:5px 10px;">Sil</button></form>` : 'Admin'}
+        </div>
+    `).join('');
+    
+    res.send(layout(`<h1>Yönetim Paneli</h1>
         <form action="/kisi-ekle" method="POST">
-            <input type="text" name="yeniUser" placeholder="Yeni Yayıncı">
+            <input type="text" name="yeniUser" placeholder="Yeni Kullanıcı Adı">
             <input type="text" name="yeniPass" placeholder="Şifre">
-            <button type="submit">Kullanıcı Ekle</button>
-        </form>`, "admin"));
+            <button type="submit">Ekle</button>
+        </form>
+        <h3>Kullanıcılar:</h3>${list}`, "admin"));
 });
 
 app.post('/kisi-ekle', (req, res) => {
@@ -69,35 +66,21 @@ app.post('/kisi-ekle', (req, res) => {
     res.redirect('/admin-paneli');
 });
 
-// YAYINCI PANELİ (Tüm özelliklerin olduğu yer)
-app.get('/panel', (req, res) => {
-    const user = req.query.user;
-    if(!veritabani[user]) veritabani[user] = {metin:"Resul Müzik", renk:"#ffffff", boyut:40, konum:"bottom: 50px; left: 50px;"};
-    const d = veritabani[user];
-    res.send(layout(`
-        <h3>${user} Yayın Paneli</h3>
-        <form action="/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="resim" required><button type="submit">Resim Yükle</button>
-        </form>
-        <hr>
-        <form action="/update-yayin" method="POST">
-            <input type="hidden" name="user" value="${user}">
-            <input type="text" name="metin" value="${d.metin}">
-            <input type="color" name="renk" value="${d.renk}">
-            <label>Boyut: ${d.boyut}px</label>
-            <input type="range" name="boyut" min="10" max="100" value="${d.boyut}">
-            <select name="konum">
-                <option value="bottom: 50px; left: 50px;">Sol Alt</option>
-                <option value="top: 50px; left: 50px;">Sol Üst</option>
-                <option value="bottom: 50px; right: 50px;">Sağ Alt</option>
-            </select>
-            <button type="submit">Kaydet</button>
-        </form>
-    `, user));
+// KULLANICI SİLME İŞLEMİ
+app.post('/sil', (req, res) => {
+    delete kullanicilar[req.body.user];
+    res.redirect('/admin-paneli');
 });
 
-app.post('/update-yayin', (req, res) => {
-    veritabani[req.body.user] = req.body;
+// YAYINCI PANELİ
+app.get('/panel', (req, res) => {
+    const user = req.query.user;
+    if(!veritabani[user]) veritabani[user] = {metin:"Resul Müzik Mix Panel", boyut:40};
+    res.send(layout(`<h3>${user} Paneli</h3><form action="/set-yazi" method="POST"><input type="hidden" name="user" value="${user}"><input type="text" name="metin" value="${veritabani[user].metin}"><input type="range" name="boyut" min="10" max="100" value="${veritabani[user].boyut}"><button type="submit">Kaydet</button></form>`, user));
+});
+
+app.post('/set-yazi', (req, res) => {
+    veritabani[req.body.user] = { metin: req.body.metin, boyut: req.body.boyut };
     res.redirect('/panel?user=' + req.body.user);
 });
 
