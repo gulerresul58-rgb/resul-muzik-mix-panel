@@ -14,6 +14,7 @@ function save() { fs.writeFileSync(dbFile, JSON.stringify(veriler, null, 2)); }
 
 const upload = multer({ dest: 'public/uploads/' });
 
+// TASARIM ŞABLONU
 const layout = (content, user, isSidebar = true) => `
     <html>
     <head>
@@ -40,6 +41,27 @@ const layout = (content, user, isSidebar = true) => `
     </html>
 `;
 
+// GİRİŞ ROTALARI
+app.get('/', (req, res) => res.send(layout(`<h3>Giriş Yap</h3><form action="/login" method="POST"><input type="text" name="user" placeholder="Kullanıcı Adı"><input type="password" name="pass" placeholder="Şifre"><button type="submit">Giriş</button></form>`, "Giriş", false)));
+
+app.post('/login', (req, res) => {
+    const { user, pass } = req.body;
+    if (veriler.kullanicilar[user] === pass) res.redirect(user === 'admin' ? '/admin-paneli' : '/panel?user=' + user);
+    else res.send("Hatalı kullanıcı adı veya şifre!");
+});
+
+// ADMIN PANELİ
+app.get('/admin-paneli', (req, res) => {
+    let list = Object.keys(veriler.kullanicilar).map(u => `<div style="padding:10px; border-bottom:1px solid #eee;">${u}</div>`).join('');
+    res.send(layout(`<h1>Yönetim</h1><form action="/kisi-ekle" method="POST"><input type="text" name="yeniUser" placeholder="Kullanıcı"><input type="text" name="yeniPass" placeholder="Şifre"><button type="submit">Ekle</button></form><h3>Kullanıcılar:</h3>${list}`, "admin"));
+});
+
+app.post('/kisi-ekle', (req, res) => {
+    veriler.kullanicilar[req.body.yeniUser] = req.body.yeniPass;
+    save(); res.redirect('/admin-paneli');
+});
+
+// KULLANICI PANELİ
 app.get('/panel', (req, res) => {
     const { user, view, msg } = req.query;
     if(!user) return res.redirect('/');
@@ -80,16 +102,17 @@ app.get('/panel', (req, res) => {
             <button type="submit">Kaydet</button>
         </form>`;
     } else {
-        content += `<p>Sol menüden düzenlemek istediğin alanı seçebilirsin.</p>`;
+        content += `<p>Sol menüden düzenlemek istediğin alanı seç.</p>`;
     }
     res.send(layout(content, user));
 });
 
 app.post('/upload', upload.single('resim'), (req, res) => {
-    const oldPath = req.file.path;
-    const newPath = path.join('public/uploads/', req.body.user + '_son.jpg');
-    fs.renameSync(oldPath, newPath);
-    res.redirect('/panel?user=' + req.body.user + '&view=resim&msg=Resminiz+başarıyla+yüklendi!');
+    if(req.file) {
+        const newPath = path.join('public/uploads/', req.body.user + '_son.jpg');
+        fs.renameSync(req.file.path, newPath);
+    }
+    res.redirect('/panel?user=' + req.body.user + '&view=resim&msg=Resim+yüklendi!');
 });
 
 app.post('/update-yayin', (req, res) => {
