@@ -19,7 +19,7 @@ const upload = multer({ dest: 'public/uploads/' });
 
 function getAyarlar(user) {
     if (!veriler.ayarlari[user]) {
-        veriler.ayarlari[user] = { metin: "Resul Müzik", boyut: 40, font: "Arial, sans-serif", renk: "#ffffff", konum: "top: 20px;" };
+        veriler.ayarlari[user] = { metin: "Resul Müzik", boyut: 40, font: "'Roboto', sans-serif", renk: "#ffffff", dikey: 50, yatay: 50 };
     }
     return veriler.ayarlari[user];
 }
@@ -28,15 +28,19 @@ const layout = (content, user, isSidebar = false) => `
     <html>
     <head>
         <title>Resul Müzik Mix Panel</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Pacifico&family=Lobster&family=Anton&family=Bebas+Neue&family=Press+Start+2P&family=Oswald&display=swap" rel="stylesheet">
         <style>
-            body { font-family: -apple-system, sans-serif; margin: 0; background: #fafafa; display: flex; }
+            body { font-family: 'Roboto', sans-serif; margin: 0; background: #fafafa; display: flex; }
             .sidebar { width: 250px; background: #fff; height: 100vh; border-right: 1px solid #dbdbdb; padding: 20px; }
-            .menu-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; background: #f0f2f5; border-radius: 8px; text-decoration: none; color: #333; font-weight: 600; }
-            .content-area { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px; }
+            .menu-btn { display: block; padding: 15px; margin: 10px 0; background: #f0f2f5; border-radius: 8px; text-decoration: none; color: #333; font-weight: 600; }
+            .content-area { flex: 1; padding: 40px; display: flex; justify-content: center; }
             .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
             input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; }
             button { background: #0095f6; color: white; font-weight: bold; cursor: pointer; border: none; }
+            .toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: white; padding: 15px 25px; border-radius: 50px; animation: fade 3s forwards; }
+            @keyframes fade { 0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+            .profile-ring { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #e1306c; padding: 3px; margin: 0 auto 20px; }
+            .profile-ring img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         </style>
     </head>
     <body>
@@ -58,24 +62,6 @@ app.post('/login', (req, res) => {
     else res.send("Hatalı!");
 });
 
-app.get('/admin-paneli', (req, res) => {
-    let list = Object.keys(veriler.kullanicilar).map(u => `
-        <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
-            ${u} ${u !== 'admin' ? `<a href="/kisi-sil/${u}" style="color:red; text-decoration:none;">Sil</a>` : ''}
-        </div>`).join('');
-    res.send(layout(`<h1>Yönetim</h1><form action="/kisi-ekle" method="POST"><input type="text" name="yeniUser" placeholder="Kullanıcı" required><input type="text" name="yeniPass" placeholder="Şifre" required><button type="submit">Ekle</button></form><h3>Kullanıcılar:</h3>${list}`, "admin", true));
-});
-
-app.post('/kisi-ekle', (req, res) => {
-    veriler.kullanicilar[req.body.yeniUser] = req.body.yeniPass;
-    save(); res.redirect('/admin-paneli');
-});
-
-app.get('/kisi-sil/:user', (req, res) => {
-    delete veriler.kullanicilar[req.params.user];
-    save(); res.redirect('/admin-paneli');
-});
-
 app.get('/panel', (req, res) => {
     const { user, view, msg } = req.query;
     if(!user) return res.redirect('/');
@@ -83,77 +69,54 @@ app.get('/panel', (req, res) => {
     const obsLink = `https://m-zik-paneli.onrender.com/yayin/${user}`;
 
     let content = `
+        <div class="profile-ring"><img src="/uploads/${user}_son.jpg" onerror="this.src='https://via.placeholder.com/100'"></div>
+        ${msg ? `<div class="toast">✅ ${msg}</div>` : ''}
         <h3>OBS Linkin:</h3><input type="text" value="${obsLink}" readonly onclick="this.select()">
-        ${msg ? `<p>✅ ${msg}</p>` : ''}
-        <form action="/update-yayin" method="POST">
+        
+        <div id="preview-box" style="position:relative; width:100%; height:150px; background:#ddd; margin:15px 0; overflow:hidden; border-radius:8px;">
+            <img src="/uploads/${user}_son.jpg" style="width:100%; height:100%; object-fit:cover;">
+            <div id="preview-text" style="position:absolute; font-weight:bold; text-shadow:2px 2px 4px #000; color:${d.renk}; font-size:${d.boyut/2}px; font-family:${d.font}; top:${d.dikey}%; left:${d.yatay}%; transform:translate(-50%, -50%);">
+                ${d.metin}
+            </div>
+        </div>
+
+        <form action="/update-yayin" method="POST" oninput="updatePreview()">
             <input type="hidden" name="user" value="${user}">
-            <input type="text" name="metin" value="${d.metin}">
-            <input type="color" name="renk" value="${d.renk}">
-            <input type="number" name="boyut" value="${d.boyut}">
-            <select name="konum">
-                <option value="top: 20px;" ${d.konum.includes("top")?"selected":""}>Üstte</option>
-                <option value="bottom: 20px;" ${d.konum.includes("bottom")?"selected":""}>Altta</option>
-                <option value="top: 50%; transform: translateY(-50%);" ${d.konum.includes("50%")?"selected":""}>Ortada</option>
-            </select>
-            <select name="font">
-                <option value="Arial, sans-serif" ${d.font.includes("Arial")?"selected":""}>Arial</option>
-                <option value="'Courier New', monospace" ${d.font.includes("Courier")?"selected":""}>Kod</option>
-                <option value="'Georgia', serif" ${d.font.includes("Georgia")?"selected":""}>Klasik</option>
-                <option value="'Impact', sans-serif" ${d.font.includes("Impact")?"selected":""}>Manşet</option>
-                <option value="'Brush Script MT', cursive" ${d.font.includes("Brush")?"selected":""}>El Yazısı</option>
-                <option value="'Trebuchet MS', sans-serif" ${d.font.includes("Trebuchet")?"selected":""}>Modern</option>
-                <option value="'Verdana', sans-serif" ${d.font.includes("Verdana")?"selected":""}>Okunaklı</option>
+            <input type="text" id="metin" name="metin" value="${d.metin}">
+            <input type="color" id="renk" name="renk" value="${d.renk}">
+            <input type="number" id="boyut" name="boyut" value="${d.boyut}">
+            <label>Dikey (%):</label><input type="range" id="dikey" name="dikey" min="0" max="100" value="${d.dikey}">
+            <label>Yatay (%):</label><input type="range" id="yatay" name="yatay" min="0" max="100" value="${d.yatay}">
+            <select name="font" id="font">
+                <option value="'Roboto', sans-serif">Modern</option>
+                <option value="'Bebas Neue', sans-serif">Manşet</option>
+                <option value="'Anton', sans-serif">Kalın</option>
+                <option value="'Pacifico', cursive">El Yazısı</option>
             </select>
             <button type="submit">Kaydet</button>
         </form>
+        <script>
+            function updatePreview() {
+                const p = document.getElementById('preview-text');
+                p.innerText = document.getElementById('metin').value;
+                p.style.color = document.getElementById('renk').value;
+                p.style.fontSize = (document.getElementById('boyut').value / 2) + 'px';
+                p.style.top = document.getElementById('dikey').value + '%';
+                p.style.left = document.getElementById('yatay').value + '%';
+                p.style.fontFamily = document.getElementById('font').value;
+            }
+        </script>
     `;
     res.send(layout(content, user, true));
 });
 
-app.post('/upload', upload.single('resim'), (req, res) => {
-    const newPath = path.join('public/uploads/', req.body.user + '_son.jpg');
-    fs.renameSync(req.file.path, newPath);
-    res.redirect('/panel?user=' + req.body.user + '&view=resim&msg=Resim+yüklendi!');
-});
-
 app.post('/update-yayin', (req, res) => {
     veriler.ayarlari[req.body.user] = req.body;
-    save(); res.redirect('/panel?user=' + req.body.user + '&view=yazi&msg=Kaydedildi!');
+    save(); res.redirect('/panel?user=' + req.body.user + '&view=yazi&msg=Başarıyla+Eklendi!');
 });
 
 app.get('/yayin/:user', (req, res) => {
     res.send(`
-        <html>
-        <head>
-            <style>
-                body { margin: 0; background: transparent; overflow: hidden; }
-                #img { width: 100%; display: block; }
-                #yazi { position: absolute; left: 0; right: 0; text-align: center; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-            </style>
-        </head>
-        <body>
-            <img id="img" src="/uploads/${req.params.user}_son.jpg">
-            <div id="yazi"></div>
-            <script>
-                setInterval(async () => {
-                    const res = await fetch('/api/ayarlar/${req.params.user}');
-                    const d = await res.json();
-                    const y = document.getElementById('yazi');
-                    y.innerText = d.metin;
-                    y.style.color = d.renk;
-                    y.style.fontSize = d.boyut + 'px';
-                    y.style.fontFamily = d.font;
-                    y.style.cssText = 'position: absolute; left: 0; right: 0; text-align: center; font-weight: bold; text-shadow: 2px 2px 4px #000; ' + d.konum;
-                    document.getElementById('img').src = '/uploads/${req.params.user}_son.jpg?t=' + new Date().getTime();
-                }, 1000);
-            </script>
-        </body>
-        </html>
-    `);
-});
-
-app.get('/api/ayarlar/:user', (req, res) => {
-    res.json(getAyarlar(req.params.user));
-});
-
-app.listen(process.env.PORT || 10000);
+        <html><head>
+            <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Pacifico&family=Lobster&family=Anton&family=Bebas+Neue&family=Press+Start+2P&family=Oswald&display=swap" rel="stylesheet">
+            <style>body { margin
