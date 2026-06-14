@@ -78,12 +78,27 @@ app.get('/panel', async (req, res) => {
     const kisisel = doc?.kullaniciResimleri?.[user] || [];
     
     let content = "";
+    
+    // Resim Büyütme Scripti
+    const modalHtml = `
+    <div id="imgModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center;" onclick="this.style.display='none'">
+        <img id="fullImg" style="max-width:90%; max-height:90%; border-radius:15px; border:2px solid #fff;">
+    </div>
+    <script>function buyut(src){ document.getElementById('fullImg').src = src; document.getElementById('imgModal').style.display = 'flex'; }</script>`;
+
     if (!view) {
-        content = `<h2>Hoş geldin, ${user}</h2><p>Sol menüden işlemlerini yönetebilirsin.</p>`;
+        content = `<h2>Hoş geldin, ${user}</h2>
+        <p>OBS Yayın Linkin:</p>
+        <input value="https://${req.headers.host}/yayin/${user}" readonly onclick="this.select()" style="cursor:pointer; text-align:center;">
+        <p>Canlı Yayın Önizlemesi:</p>
+        <div onclick="document.getElementById('modal').style.display='flex'" style="width:100px; height:100px; border-radius:50%; border:4px solid #0095f6; margin:10px auto; cursor:pointer; background:url('/uploads/${user}_son.jpg?t=${Date.now()}') center/cover;"></div>
+        <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center;" onclick="this.style.display='none'">
+            <iframe src="/yayin/${user}" style="width:854px; height:480px; border:none; background:#000;"></iframe>
+        </div>`;
     } else if (view === 'resim') {
         const galeri = (liste) => liste.map(m => `
             <div style="display:inline-block; margin:5px; text-align:center;">
-                <img src="${m}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:2px solid #0095f6;">
+                <img src="${m}" onclick="buyut('${m}')" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:2px solid #0095f6; cursor:pointer;">
                 <form action="/yayina-gecir" method="POST"><input type="hidden" name="user" value="${user}"><input type="hidden" name="resimYolu" value="${m}"><button style="padding:5px; font-size:10px; margin-top:2px;">Yayına Al</button></form>
             </div>`).join('');
         content = `<h3>Resim Yükle</h3>
@@ -92,7 +107,7 @@ app.get('/panel', async (req, res) => {
             <input type="file" name="resim" required><button type="submit">Yükle</button>
         </form>
         <hr><h3>Kendi Resimlerin</h3><div style="display:flex; flex-wrap:wrap; justify-content:center;">${galeri(kisisel)}</div>
-        <hr><h3>Genel Manzaralar</h3><div style="display:flex; flex-wrap:wrap; justify-content:center;">${galeri(manzaralar)}</div>`;
+        <hr><h3>Genel Manzaralar</h3><div style="display:flex; flex-wrap:wrap; justify-content:center;">${galeri(manzaralar)}</div>` + modalHtml;
     } else if (view === 'yazi') {
         content = `<h3>Yazı Ayarları</h3>
         <div id="p-box" style="width:100%; height:200px; background:#e0e0e0; position:relative; border-radius:20px; overflow:hidden; margin-bottom:20px; border:2px dashed #bbb;">
