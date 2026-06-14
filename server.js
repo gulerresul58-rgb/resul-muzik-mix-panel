@@ -75,7 +75,7 @@ app.get('/panel', async (req, res) => {
         </div>
         <form action="/update-yayin" method="POST" oninput="u()">
             <input type="hidden" name="user" value="${user}">
-            <input name="metin" value="${d.metin}" id="i-metin">
+            <input name="metin" value="${d.metin}" id="i-metin" placeholder="Yazı">
             <select name="font" id="i-font">
                 <option value="Arial" ${d.font=='Arial'?'selected':''}>Arial</option>
                 <option value="Impact" ${d.font=='Impact'?'selected':''}>Impact</option>
@@ -105,32 +105,6 @@ app.post('/update-yayin', async (req, res) => {
     res.redirect('/panel?user=' + req.body.user + '&msg=Ayarlar Kaydedildi');
 });
 
+// 854x480 Çözünürlük ve Titreşimsiz Yayını
 app.get('/yayin/:user', (req, res) => res.send(`
-    <html><body style="margin:0; overflow:hidden; background:#000;">
-    <img id="img" src="/uploads/${req.params.user}_son.jpg" style="position:absolute; width:100%; height:100%; object-fit:cover;">
-    <div id="y" style="position:absolute; transform:translate(-50%,-50%); text-shadow:2px 2px 4px #000; font-weight:bold;"></div>
-    <script>setInterval(async()=>{try{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');
-    y.innerText=d.metin; y.style.fontSize=d.boyut+'px'; y.style.color=d.renk; y.style.fontFamily=d.font; y.style.top=d.dikey+'%'; y.style.left=d.yatay+'%';
-    document.getElementById('img').src='/uploads/${req.params.user}_son.jpg?t='+Date.now();}catch(e){}},3000)</script></body></html>
-`));
-
-app.get('/api/ayarlar/:user', async (req, res) => {
-    const db = await getDb();
-    const doc = await db.findOne({ id: "veriler" });
-    res.json(doc?.ayarlari?.[req.params.user] || { metin: "Resul Müzik", boyut: 40, renk: "#000000", dikey: 50, yatay: 50, font: "Arial" });
-});
-
-app.get('/admin-paneli', async (req, res) => {
-    const db = await getDb();
-    const doc = await db.findOne({ id: "veriler" });
-    let list = Object.keys(doc?.kullanicilar || {}).map(u => `<div>${u}</div>`).join('');
-    res.send(layout(`<h3>Kullanıcılar</h3><form action="/kisi-ekle" method="POST"><input name="yeniUser" placeholder="İsim"><input name="yeniPass" placeholder="Şifre"><button>Ekle</button></form>${list}`, "admin", true));
-});
-
-app.post('/kisi-ekle', async (req, res) => {
-    const db = await getDb();
-    await db.updateOne({ id: "veriler" }, { $set: { [`kullanicilar.${req.body.yeniUser}`]: req.body.yeniPass } }, { upsert: true });
-    res.redirect('/admin-paneli');
-});
-
-app.listen(process.env.PORT || 10000);
+    <html>
