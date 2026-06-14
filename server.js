@@ -19,7 +19,7 @@ let yaziAyarlari = {
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => { cb(null, uploadDir); },
-    filename: (req, file, cb) => { cb(null, 'yayin1_son.jpg'); } // Dosya ismini sabitledik
+    filename: (req, file, cb) => { cb(null, 'yayin1_son.jpg'); }
 });
 const upload = multer({ storage: storage });
 
@@ -27,15 +27,38 @@ const layout = (content) => `
     <html>
     <head>
         <style>
-            body { background: #fafafa; font-family: sans-serif; margin: 0; display: flex; }
+            body { background: #fafafa; font-family: sans-serif; margin: 0; display: flex; position: relative; }
             .sidebar { width: 220px; background: white; border-right: 1px solid #dbdbdb; height: 100vh; padding: 20px; }
-            .card { background: white; border: 1px solid #dbdbdb; width: 400px; padding: 30px; border-radius: 3px; }
+            .card { background: white; border: 1px solid #dbdbdb; width: 400px; padding: 30px; border-radius: 3px; position: relative; }
             input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; }
             button { width: 100%; padding: 10px; background: #0095f6; color: white; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; }
             a { color: #333; text-decoration: none; display: block; margin: 15px 0; font-weight: bold; }
+            
+            /* INSTAGRAM STORY BALONCUĞU STİLİ (SADECE PANEL İÇİN) */
+            .ig-bubble {
+                position: fixed; top: 20px; right: 20px;
+                background: white; border-radius: 15px;
+                padding: 15px; border: 1px solid #dbdbdb;
+                display: flex; align-items: center; gap: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                opacity: 0; transform: translateY(-20px);
+                transition: all 0.3s ease; z-index: 1000;
+            }
+            .ig-bubble.active { opacity: 1; transform: translateY(0); }
+            .ig-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #dbdbdb; }
+            .ig-text { font-size: 0.9em; line-height: 1.2; color: #262626; }
+            .ig-text-title { font-weight: bold; }
         </style>
     </head>
     <body>
+        <div id="status-bubble" class="ig-bubble">
+            <img id="status-thumb" class="ig-thumb" src="/uploads/yayin1_son.jpg?t=${Date.now()}" alt="">
+            <div class="ig-text">
+                <div class="ig-text-title" id="status-action">Yüklendi</div>
+                <div id="status-content">Detaylar...</div>
+            </div>
+        </div>
+
         <div class="sidebar">
             <div style="font-weight:bold; margin-bottom:20px;">MENÜ</div>
             <a href="/admin">🖼 Resim Değiştir</a>
@@ -47,6 +70,22 @@ const layout = (content) => `
                 ${content}
             </div>
         </div>
+
+        <script>
+            function showBubble(action, content, image) {
+                const bubble = document.getElementById('status-bubble');
+                const actionEl = document.getElementById('status-action');
+                const contentEl = document.getElementById('status-content');
+                const thumbEl = document.getElementById('status-thumb');
+
+                actionEl.innerText = action;
+                contentEl.innerText = content;
+                if (image) thumbEl.src = image + '?t=' + new Date().getTime();
+
+                bubble.classList.add('active');
+                setTimeout(() => bubble.classList.remove('active'), 3000); // 3 saniye sonra kaybolur
+            }
+        </script>
     </body>
     </html>
 `;
@@ -54,13 +93,13 @@ const layout = (content) => `
 app.get('/api/yazi', (req, res) => res.json(yaziAyarlari));
 
 app.get('/admin', (req, res) => res.send(layout(`
-    <form action="/upload" method="POST" enctype="multipart/form-data">
+    <form action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showBubble('RESİM YÜKLENDİ', 'Yayin1 story güncellendi', '/uploads/yayin1_son.jpg')">
         <input type="file" name="resim" required><button type="submit">Resmi Yükle</button>
     </form>
 `)));
 
 app.get('/yazi-ayarlari', (req, res) => res.send(layout(`
-    <form action="/set-yazi" method="POST">
+    <form action="/set-yazi" method="POST" onsubmit="showBubble('YAZI EKLENDİ', '${yaziAyarlari.metin} yayına girdi', '/uploads/yayin1_son.jpg')">
         <input type="text" name="metin" value="${yaziAyarlari.metin}" placeholder="Yazı">
         <label>Boyut: <span id="val">${yaziAyarlari.boyut.replace('px','')}</span>px</label>
         <input type="range" name="boyut" min="10" max="200" value="${yaziAyarlari.boyut.replace('px','')}" oninput="document.getElementById('val').innerText = this.value">
@@ -86,6 +125,7 @@ app.post('/set-yazi', (req, res) => {
 
 app.post('/upload', upload.single('resim'), (req, res) => res.redirect('/admin'));
 
+// OBS EKRANI (DEĞİŞMEDİ)
 app.get('/son-resim/:user', (req, res) => {
     res.send(`
         <html>
