@@ -8,8 +8,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const dbFile = path.join(__dirname, 'veriler.json');
+
+// GÜVENLİ VERİ OKUMA: Kullanıcıların silinmesini önler
 let veriler = { kullanicilar: { "admin": "admin123" }, ayarlari: {} };
-if (fs.existsSync(dbFile)) veriler = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+if (fs.existsSync(dbFile)) {
+    try {
+        veriler = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    } catch (e) {
+        console.log("Veri dosyası hatası, varsayılanlar yüklendi.");
+    }
+}
 function save() { fs.writeFileSync(dbFile, JSON.stringify(veriler, null, 2)); }
 
 const upload = multer({ dest: 'public/uploads/' });
@@ -76,8 +84,15 @@ app.get('/panel', (req, res) => {
     if(!user) return res.redirect('/');
     if(!veriler.ayarlari[user]) veriler.ayarlari[user] = {metin:"Resul Müzik", boyut:40, font:"Arial", renk:"#000", konum:"bottom: 50px; left: 50px;"};
     const d = veriler.ayarlari[user];
+    
+    // OBS LİNKİ GÖSTERİMİ
+    const obsLink = `https://m-zik-paneli.onrender.com/yayin/${user}`;
 
     let content = `
+        <div style="background:#f0f2f5; padding:10px; border-radius:8px; margin-bottom:20px; font-size:12px; border:1px solid #ddd;">
+            <strong>OBS Yayın Linkin:</strong><br>
+            <input type="text" value="${obsLink}" readonly onclick="this.select()" style="margin-top:5px; cursor:pointer; background:#fff;">
+        </div>
         ${msg ? `<div style="background:#d4edda; color:#155724; padding:10px; border-radius:8px; margin-bottom:15px;">✅ ${msg}</div>` : ''}
         <div style="text-align:center; margin-bottom:20px;">
             <div style="width:90px; height:90px; border-radius:50%; border:3px solid #e1306c; padding:3px; margin:0 auto;">
