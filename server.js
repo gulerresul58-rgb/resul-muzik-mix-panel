@@ -51,7 +51,7 @@ app.post('/login', (req, res) => {
     else res.send("Hatalı!");
 });
 
-// ADMIN (Temiz ve Silme Butonlu)
+// ADMIN
 app.get('/admin-paneli', (req, res) => {
     let list = Object.keys(veriler.kullanicilar).map(u => `
         <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
@@ -90,7 +90,19 @@ app.get('/panel', (req, res) => {
     if (view === 'resim') {
         content += `<h2>Resim Yükle</h2><form action="/upload" method="POST" enctype="multipart/form-data"><input type="hidden" name="user" value="${user}"><input type="file" name="resim"><button type="submit">Yükle</button></form>`;
     } else if (view === 'yazi') {
-        content += `<h2>Yazı Ayarları</h2><form action="/update-yayin" method="POST"><input type="hidden" name="user" value="${user}"><input type="text" name="metin" value="${d.metin}"><input type="color" name="renk" value="${d.renk}"><input type="range" name="boyut" min="10" max="100" value="${d.boyut}"><button type="submit">Kaydet</button></form>`;
+        content += `<h2>Yazı Ayarları</h2>
+        <form action="/update-yayin" method="POST">
+            <input type="hidden" name="user" value="${user}">
+            <input type="text" name="metin" value="${d.metin}">
+            <input type="color" name="renk" value="${d.renk}">
+            <input type="range" name="boyut" min="10" max="100" value="${d.boyut}">
+            <select name="font">
+                <option value="Arial" ${d.font=="Arial"?"selected":""}>Arial</option>
+                <option value="cursive" ${d.font=="cursive"?"selected":""}>El Yazısı</option>
+                <option value="fantasy" ${d.font=="fantasy"?"selected":""}>Modern</option>
+            </select>
+            <button type="submit">Kaydet</button>
+        </form>`;
     } else {
         content += `<p>Sol menüden bir seçenek seç.</p>`;
     }
