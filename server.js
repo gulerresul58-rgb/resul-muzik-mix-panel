@@ -50,7 +50,6 @@ const layout = (content, user, isSidebar = false) => `
     </html>
 `;
 
-// GİRİŞ
 app.get('/', (req, res) => res.send(layout(`<h3>Giriş Yap</h3><form action="/login" method="POST"><input type="text" name="user" placeholder="Kullanıcı"><input type="password" name="pass" placeholder="Şifre"><button type="submit">Giriş</button></form>`, "Giriş")));
 
 app.post('/login', (req, res) => {
@@ -59,7 +58,6 @@ app.post('/login', (req, res) => {
     else res.send("Hatalı!");
 });
 
-// ADMIN
 app.get('/admin-paneli', (req, res) => {
     let list = Object.keys(veriler.kullanicilar).map(u => `
         <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
@@ -78,14 +76,11 @@ app.get('/kisi-sil/:user', (req, res) => {
     save(); res.redirect('/admin-paneli');
 });
 
-// KULLANICI PANELİ
 app.get('/panel', (req, res) => {
     const { user, view, msg } = req.query;
     if(!user) return res.redirect('/');
     if(!veriler.ayarlari[user]) veriler.ayarlari[user] = {metin:"Resul Müzik", boyut:40, font:"Arial", renk:"#000", konum:"bottom: 50px; left: 50px;"};
     const d = veriler.ayarlari[user];
-    
-    // OBS LİNKİ GÖSTERİMİ
     const obsLink = `https://m-zik-paneli.onrender.com/yayin/${user}`;
 
     let content = `
@@ -135,9 +130,29 @@ app.post('/update-yayin', (req, res) => {
     save(); res.redirect('/panel?user=' + req.body.user + '&view=yazi&msg=Kaydedildi!');
 });
 
+// SORUNSUZ YAYIN ROTASI (Titreme ve Çizgi Yok)
 app.get('/yayin/:user', (req, res) => {
     const d = veriler.ayarlari[req.params.user] || { metin: "Yayında", boyut: 40, renk: "#fff", font: "Arial", konum: "bottom: 50px; left: 50px;" };
-    res.send(`<body style="margin:0; background:black;"><img src="/uploads/${req.params.user}_son.jpg" style="width:100%;"><div style="position:absolute; ${d.konum} color:${d.renk}; font-size:${d.boyut}px; font-family:${d.font};">${d.metin}</div></body>`);
+    res.send(`
+        <html>
+        <head>
+            <style>
+                body { margin: 0; padding: 0; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                #img { width: 100%; display: block; }
+            </style>
+            <script>
+                setInterval(() => {
+                    const img = document.getElementById('img');
+                    img.src = '/uploads/${req.params.user}_son.jpg?t=' + new Date().getTime();
+                }, 1000);
+            </script>
+        </head>
+        <body>
+            <img id="img" src="/uploads/${req.params.user}_son.jpg">
+            <div style="position:absolute; ${d.konum} color:${d.renk}; font-size:${d.boyut}px; font-family:${d.font}; pointer-events:none;">${d.metin}</div>
+        </body>
+        </html>
+    `);
 });
 
 app.listen(process.env.PORT || 10000);
