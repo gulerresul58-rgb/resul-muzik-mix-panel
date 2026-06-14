@@ -4,6 +4,12 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 
+// --- DİZİN KONTROLÜ (Render hata önleme) ---
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
@@ -11,7 +17,10 @@ const dbFile = path.join(__dirname, 'veriler.json');
 
 let veriler = { kullanicilar: { "admin": "admin123" }, ayarlari: {} };
 if (fs.existsSync(dbFile)) {
-    try { veriler = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch (e) {}
+    try {
+        const data = fs.readFileSync(dbFile, 'utf8');
+        if (data) veriler = JSON.parse(data);
+    } catch (e) { console.error("JSON okuma hatası:", e); }
 }
 function save() { fs.writeFileSync(dbFile, JSON.stringify(veriler, null, 2)); }
 
@@ -72,14 +81,12 @@ app.get('/panel', (req, res) => {
         <div class="profile-ring"><img src="/uploads/${user}_son.jpg" onerror="this.src='https://via.placeholder.com/100'"></div>
         ${msg ? `<div class="toast">✅ ${msg}</div>` : ''}
         <h3>OBS Linkin:</h3><input type="text" value="${obsLink}" readonly onclick="this.select()">
-        
         <div id="preview-box" style="position:relative; width:100%; height:150px; background:#ddd; margin:15px 0; overflow:hidden; border-radius:8px;">
             <img src="/uploads/${user}_son.jpg" style="width:100%; height:100%; object-fit:cover;">
             <div id="preview-text" style="position:absolute; font-weight:bold; text-shadow:2px 2px 4px #000; color:${d.renk}; font-size:${d.boyut/2}px; font-family:${d.font}; top:${d.dikey}%; left:${d.yatay}%; transform:translate(-50%, -50%);">
                 ${d.metin}
             </div>
         </div>
-
         <form action="/update-yayin" method="POST" oninput="updatePreview()">
             <input type="hidden" name="user" value="${user}">
             <input type="text" id="metin" name="metin" value="${d.metin}">
@@ -112,11 +119,12 @@ app.get('/panel', (req, res) => {
 
 app.post('/update-yayin', (req, res) => {
     veriler.ayarlari[req.body.user] = req.body;
-    save(); res.redirect('/panel?user=' + req.body.user + '&view=yazi&msg=Başarıyla+Eklendi!');
+    save(); res.redirect('/panel?user=' + req.body.user + '&msg=Başarıyla+Eklendi!');
 });
 
 app.get('/yayin/:user', (req, res) => {
-    res.send(`
-        <html><head>
-            <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Pacifico&family=Lobster&family=Anton&family=Bebas+Neue&family=Press+Start+2P&family=Oswald&display=swap" rel="stylesheet">
-            <style>body { margin
+    res.send(`<html><head><link href="https://fonts.googleapis.com/css2?family=Roboto&family=Pacifico&family=Lobster&family=Anton&family=Bebas+Neue&display=swap" rel="stylesheet"><style>body{margin:0;background:transparent;overflow:hidden;} #img{width:100%;display:block;}</style></head><body><img id="img" src="/uploads/${req.params.user}_son.jpg"><div id="yazi"></div><script>setInterval(async()=>{const res=await fetch('/api/ayarlar/${req.params.user}');const d=await res.json();const y=document.getElementById('yazi');y.innerText=d.metin;y.style.color=d.renk;y.style.fontSize=d.boyut+'px';y.style.fontFamily=d.font;y.style.position='absolute';y.style.top=d.dikey+'%';y.style.left=d.yatay+'%';y.style.transform='translate(-50%, -50%)';y.style.textShadow='2px 2px 5px #000';document.getElementById('img').src='/uploads/${req.params.user}_son.jpg?t='+new Date().getTime();},1000);</script></body></html>`);
+});
+
+app.get('/api/ayarlar/:user', (req, res) => res.json(getAyarlar(req.params.user)));
+app.listen(process.env.PORT || 10000);
