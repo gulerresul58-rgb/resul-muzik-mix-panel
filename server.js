@@ -71,14 +71,14 @@ app.get('/', (req, res) => res.send(layout(`<h3>Giriş Yap</h3><form action="/lo
 app.post('/login', (req, res) => {
     const { user, pass } = req.body;
     if (veriler.kullanicilar[user] && veriler.kullanicilar[user] === pass) res.redirect('/panel?user=' + user + '&welcome=true');
-    else res.send("Hatalı!");
+    else res.send("Hatalı bilgiler!");
 });
 
 app.get('/panel', (req, res) => {
     const { user, view, welcome } = req.query;
     const d = getAyarlar(user);
     const content = !view ? `<h2>Ana Sayfa</h2><p>OBS Linkin:</p><input type="text" value="https://m-zik-paneli.onrender.com/yayin/${user}" readonly onclick="this.select()">
-        <p style="text-align:center;">Canlı Önizleme (Tıkla):</p>
+        <p style="text-align:center;">Canlı Önizleme:</p>
         <div class="story-bubble" onclick="document.getElementById('modal').style.display='flex'">
             <img src="/uploads/${user}_son.jpg" onerror="this.src='https://via.placeholder.com/100'">
         </div>` 
@@ -102,7 +102,7 @@ app.get('/panel', (req, res) => {
     res.send(layout(content, user, true, welcome === 'true'));
 });
 
-// Admin ve diğer fonksiyonlar...
+// Admin ve diğer fonksiyonlar (yayin rotasında 3000ms güncelleme ayarlandı)
 app.get('/admin-paneli', (req, res) => {
     let list = Object.keys(veriler.kullanicilar).map(u => `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">${u} ${u !== 'admin' ? `<a href="/kisi-sil/${u}" style="color:red;">Sil</a>` : ''}</div>`).join('');
     res.send(layout(`<h1>Yönetim</h1><form action="/kisi-ekle" method="POST"><input type="text" name="yeniUser" required placeholder="User"><input type="text" name="yeniPass" required placeholder="Pass"><button type="submit">Ekle</button></form>${list}`, "admin", true));
@@ -111,6 +111,6 @@ app.post('/kisi-ekle', (req, res) => { veriler.kullanicilar[req.body.yeniUser] =
 app.get('/kisi-sil/:user', (req, res) => { delete veriler.kullanicilar[req.params.user]; save(); res.redirect('/admin-paneli'); });
 app.post('/upload', upload.single('resim'), (req, res) => { fs.renameSync(req.file.path, path.join('public/uploads/', req.body.user + '_son.jpg')); res.redirect('/panel?user=' + req.body.user); });
 app.post('/update-yayin', (req, res) => { veriler.ayarlari[req.body.user] = req.body; save(); res.redirect('/panel?user=' + req.body.user); });
-app.get('/yayin/:user', (req, res) => { res.send(`<html><body style="margin:0; background:transparent;"><div id="y"></div><script>setInterval(async()=>{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');y.innerText=d.metin;y.style.cssText='position:absolute;font-weight:bold;color:'+d.renk+';font-size:'+d.boyut+'px;top:'+d.dikey+'%;left:'+d.yatay+'%;transform:translate(-50%,-50%);font-family:'+d.font;},1000)</script></body></html>`); });
+app.get('/yayin/:user', (req, res) => { res.send(`<html><body style="margin:0; background:transparent;"><div id="y"></div><script>setInterval(async()=>{const r=await fetch('/api/ayarlar/${req.params.user}');const d=await r.json();const y=document.getElementById('y');y.innerText=d.metin;y.style.cssText='position:absolute;font-weight:bold;color:'+d.renk+';font-size:'+d.boyut+'px;top:'+d.dikey+'%;left:'+d.yatay+'%;transform:translate(-50%,-50%);font-family:'+d.font;},3000)</script></body></html>`); });
 app.get('/api/ayarlar/:user', (req, res) => res.json(getAyarlar(req.params.user)));
 app.listen(process.env.PORT || 10000);
