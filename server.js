@@ -7,7 +7,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-let kullanicilar = { "admin": "admin123" }; 
+let kullanicilar = { "resul3402": "resul0202" }; 
 let veritabani = {};
 
 const upload = multer({ dest: 'public/uploads/' });
