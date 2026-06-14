@@ -45,7 +45,11 @@ const layout = (content, user, isSidebar = false, isLogin = false, msg = "") => 
             <a href="/panel?user=${user}&view=resim" class="bubble-btn">🖼 Resim Yükle</a>
             <a href="/panel?user=${user}&view=yazi" class="bubble-btn">✍ Yazı Ayarları</a>
             <a href="/panel?user=${user}&view=iletisim" class="bubble-btn" style="background:#25d366;">📞 İletişim</a>` : ''}
-            ${user === 'admin' ? '<a href="/admin-paneli" class="bubble-btn" style="background:#e1306c;">👤 Kullanıcı Yönetimi</a>' : ''}
+            ${user === 'admin' ? `
+                <a href="/admin-paneli" class="bubble-btn">👤 Kullanıcılar</a>
+                <a href="/admin-paneli?view=manzaralar" class="bubble-btn" style="background:#ff9f43;">🌄 Manzaralar</a>
+                <a href="/admin-paneli?view=iletisim" class="bubble-btn" style="background:#25d366;">📞 İletişim</a>
+            ` : ''}
             <br><a href="/" style="color:red; text-decoration:none;">Çıkış Yap</a>
         </div>` : ''}
         <div class="content"><div class="card">${content}</div></div>
@@ -179,31 +183,37 @@ app.get('/api/ayarlar/:user', async (req, res) => {
 });
 
 app.get('/admin-paneli', async (req, res) => {
+    const { view } = req.query;
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
     const ileti = doc?.iletisim || { wp: "", insta: "" };
     const manzaralar = doc?.manzaralar || [];
-    let list = Object.keys(doc?.kullanicilar || {}).map(u => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
-            <span>${u}</span>
-            <form action="/kisi-sil" method="POST" style="margin:0;"><input type="hidden" name="user" value="${u}"><button style="background:red; border:none; color:white; padding:5px 15px; border-radius:10px; cursor:pointer;">Sil</button></form>
-        </div>`).join('');
     
-    const manzaraGaleri = manzaralar.map(m => `
-        <div style="position:relative; display:inline-block; margin:5px;">
-            <img src="${m}" style="width:80px; height:80px; object-fit:cover; border-radius:10px;">
-            <form action="/sil-manzara" method="POST" style="position:absolute; top:0; right:0;">
-                <input type="hidden" name="resimYolu" value="${m}">
-                <button style="background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:10px;">X</button>
-            </form>
-        </div>`).join('');
-
-    res.send(layout(`<h3>Kullanıcılar</h3><form action="/kisi-ekle" method="POST"><input name="yeniUser" placeholder="İsim" required><input name="yeniPass" placeholder="Şifre" required><button>Ekle</button></form>
-    <hr><h3>Site Manzaraları</h3>
-    <form action="/upload-manzara" method="POST" enctype="multipart/form-data"><input type="file" name="manzara" required><button style="background:green;">Yükle</button></form>
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">${manzaraGaleri}</div>
-    <hr><h3>İletişim</h3>
-    <form action="/update-iletisim" method="POST"><input name="wp" placeholder="WhatsApp (905...)" value="${ileti.wp}" required><input name="insta" placeholder="Instagram Kullanıcı Adı" value="${ileti.insta}" required><button style="background:#555;">Kaydet</button></form>${list}`, "admin", true));
+    let content = "";
+    if (view === 'manzaralar') {
+        const manzaraGaleri = manzaralar.map(m => `
+            <div style="position:relative; display:inline-block; margin:5px;">
+                <img src="${m}" style="width:80px; height:80px; object-fit:cover; border-radius:10px;">
+                <form action="/sil-manzara" method="POST" style="position:absolute; top:0; right:0;">
+                    <input type="hidden" name="resimYolu" value="${m}">
+                    <button style="background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:10px;">X</button>
+                </form>
+            </div>`).join('');
+        content = `<h3>Site Manzaraları</h3>
+            <form action="/upload-manzara" method="POST" enctype="multipart/form-data"><input type="file" name="manzara" required><button style="background:green;">Yükle</button></form>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">${manzaraGaleri}</div>`;
+    } else if (view === 'iletisim') {
+        content = `<h3>İletişim</h3>
+            <form action="/update-iletisim" method="POST"><input name="wp" placeholder="WhatsApp (905...)" value="${ileti.wp}" required><input name="insta" placeholder="Instagram Kullanıcı Adı" value="${ileti.insta}" required><button style="background:#555;">Kaydet</button></form>`;
+    } else {
+        let list = Object.keys(doc?.kullanicilar || {}).map(u => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
+                <span>${u}</span>
+                <form action="/kisi-sil" method="POST" style="margin:0;"><input type="hidden" name="user" value="${u}"><button style="background:red; border:none; color:white; padding:5px 15px; border-radius:10px; cursor:pointer;">Sil</button></form>
+            </div>`).join('');
+        content = `<h3>Kullanıcılar</h3><form action="/kisi-ekle" method="POST"><input name="yeniUser" placeholder="İsim" required><input name="yeniPass" placeholder="Şifre" required><button>Ekle</button></form><hr>${list}`;
+    }
+    res.send(layout(content, "admin", true));
 });
 
 app.post('/upload-manzara', upload.single('manzara'), async (req, res) => {
@@ -213,7 +223,7 @@ app.post('/upload-manzara', upload.single('manzara'), async (req, res) => {
         fs.renameSync(req.file.path, path.join('public/uploads/', yeniAd));
         await db.updateOne({ id: "veriler" }, { $push: { manzaralar: '/uploads/' + yeniAd } }, { upsert: true });
     }
-    res.redirect('/admin-paneli?msg=Manzara Eklendi');
+    res.redirect('/admin-paneli?view=manzaralar&msg=Manzara Eklendi');
 });
 
 app.post('/sil-manzara', async (req, res) => {
@@ -223,7 +233,7 @@ app.post('/sil-manzara', async (req, res) => {
     const tamYol = path.join('public/uploads/', dosyaAdi);
     if (fs.existsSync(tamYol)) fs.unlinkSync(tamYol);
     await db.updateOne({ id: "veriler" }, { $pull: { manzaralar: resimYolu } });
-    res.redirect('/admin-paneli?msg=Manzara Silindi');
+    res.redirect('/admin-paneli?view=manzaralar&msg=Manzara Silindi');
 });
 
 app.post('/kisi-ekle', async (req, res) => {
@@ -235,7 +245,7 @@ app.post('/kisi-ekle', async (req, res) => {
 app.post('/update-iletisim', async (req, res) => {
     const db = await getDb();
     await db.updateOne({ id: "veriler" }, { $set: { iletisim: { wp: req.body.wp, insta: req.body.insta } } }, { upsert: true });
-    res.redirect('/admin-paneli?msg=Bilgiler Güncellendi');
+    res.redirect('/admin-paneli?view=iletisim&msg=Bilgiler Güncellendi');
 });
 
 app.post('/kisi-sil', async (req, res) => {
