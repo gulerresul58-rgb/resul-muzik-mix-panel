@@ -70,18 +70,32 @@ app.get('/panel', async (req, res) => {
     const doc = await db.findOne({ id: "veriler" });
     const d = doc?.ayarlari?.[user] || { metin: "Resul Müzik", boyut: 40, renk: "#000000", dikey: 50, yatay: 50, font: "Arial" };
     const ileti = doc?.iletisim || { wp: "", insta: "" };
+    const manzaralar = doc?.manzaralar || [];
     
     let content = "";
     if (!view) {
+        const manzaraHtml = manzaralar.map(m => `
+            <form action="/yayina-gecir" method="POST" style="display:inline-block;">
+                <input type="hidden" name="user" value="${user}">
+                <input type="hidden" name="resimYolu" value="${m}">
+                <button type="submit" style="background:none; border:none; padding:0; cursor:pointer;">
+                    <img src="${m}" style="width:80px; height:80px; object-fit:cover; border-radius:15px; margin:5px; border:2px solid #0095f6;">
+                </button>
+            </form>
+        `).join('');
+
         content = `<h2>Hoş geldin, ${user}</h2>
         ${user !== 'admin' ? `
             <p>OBS Yayın Linkin:</p>
             <input value="https://${req.headers.host}/yayin/${user}" readonly onclick="this.select()">
             <p>Canlı Yayın Önizlemesi:</p>
-            <div onclick="document.getElementById('modal').style.display='flex'" style="width:100px; height:100px; border-radius:50%; border:4px solid #0095f6; margin:20px auto; cursor:pointer; overflow:hidden; background:url('/uploads/${user}_son.jpg') center/cover;"></div>
-            <div id="modal" onclick="this.style.display='none'" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center;">
+            <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center;" onclick="this.style.display='none'">
                 <iframe src="/yayin/${user}" style="width:854px; height:480px; border:none; background:#000;"></iframe>
-            </div>` : '<h3>Yönetim Paneli</h3>'}`;
+            </div>
+            <div onclick="document.getElementById('modal').style.display='flex'" style="width:100px; height:100px; border-radius:50%; border:4px solid #0095f6; margin:20px auto; cursor:pointer; overflow:hidden; background:url('/uploads/${user}_son.jpg') center/cover;"></div>
+            <hr>
+            <p>Hazır Manzaralar:</p>
+            <div style="display:flex; flex-wrap:wrap; justify-content:center;">${manzaraHtml}</div>` : '<h3>Yönetim Paneli</h3>'}`;
     } else if (view === 'yazi') {
         content = `<h3>Yazı Ayarları</h3>
         <div id="p-box" style="width:100%; height:200px; background:#e0e0e0; position:relative; border-radius:20px; overflow:hidden; margin-bottom:20px; border:2px dashed #bbb;">
@@ -103,7 +117,11 @@ app.get('/panel', async (req, res) => {
         <a href="https://wa.me/${ileti.wp}" class="bubble-btn" style="background:#25d366;" target="_blank">WhatsApp'a Git</a>
         <a href="https://instagram.com/${ileti.insta}" class="bubble-btn" style="background:#e1306c;" target="_blank">Instagram'a Git</a>`;
     } else {
-        content = `<h3>Resim Yükle</h3><form action="/upload" method="POST" enctype="multipart/form-data"><input type="hidden" name="user" value="${user}"><input type="file" name="resim"><button type="submit">Yükle</button></form>`;
+        content = `<h3>Resim Yükle</h3>
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="user" value="${user}">
+            <input type="file" name="resim"><button type="submit">Yükle ve Yayına Al</button>
+        </form>`;
     }
     res.send(layout(content, user, true, false, msg));
 });
@@ -111,6 +129,14 @@ app.get('/panel', async (req, res) => {
 app.post('/upload', upload.single('resim'), (req, res) => { 
     if(req.file) fs.renameSync(req.file.path, path.join('public/uploads/', req.body.user + '_son.jpg')); 
     res.redirect('/panel?user=' + req.body.user + '&msg=Resim Yüklendi'); 
+});
+
+app.post('/yayina-gecir', async (req, res) => {
+    const { user, resimYolu } = req.body;
+    const kaynakYol = path.join('public', resimYolu);
+    const hedefYol = path.join('public/uploads/', user + '_son.jpg');
+    fs.copyFileSync(kaynakYol, hedefYol);
+    res.redirect('/panel?user=' + user + '&msg=Resim Yayına Alındı');
 });
 
 app.post('/update-yayin', async (req, res) => {
@@ -156,14 +182,48 @@ app.get('/admin-paneli', async (req, res) => {
     const db = await getDb();
     const doc = await db.findOne({ id: "veriler" });
     const ileti = doc?.iletisim || { wp: "", insta: "" };
+    const manzaralar = doc?.manzaralar || [];
     let list = Object.keys(doc?.kullanicilar || {}).map(u => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
             <span>${u}</span>
             <form action="/kisi-sil" method="POST" style="margin:0;"><input type="hidden" name="user" value="${u}"><button style="background:red; border:none; color:white; padding:5px 15px; border-radius:10px; cursor:pointer;">Sil</button></form>
         </div>`).join('');
+    
+    const manzaraGaleri = manzaralar.map(m => `
+        <div style="position:relative; display:inline-block; margin:5px;">
+            <img src="${m}" style="width:80px; height:80px; object-fit:cover; border-radius:10px;">
+            <form action="/sil-manzara" method="POST" style="position:absolute; top:0; right:0;">
+                <input type="hidden" name="resimYolu" value="${m}">
+                <button style="background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:10px;">X</button>
+            </form>
+        </div>`).join('');
+
     res.send(layout(`<h3>Kullanıcılar</h3><form action="/kisi-ekle" method="POST"><input name="yeniUser" placeholder="İsim" required><input name="yeniPass" placeholder="Şifre" required><button>Ekle</button></form>
-    <hr><h3>İletişim Bilgilerini Düzenle</h3>
+    <hr><h3>Site Manzaraları</h3>
+    <form action="/upload-manzara" method="POST" enctype="multipart/form-data"><input type="file" name="manzara" required><button style="background:green;">Yükle</button></form>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">${manzaraGaleri}</div>
+    <hr><h3>İletişim</h3>
     <form action="/update-iletisim" method="POST"><input name="wp" placeholder="WhatsApp (905...)" value="${ileti.wp}" required><input name="insta" placeholder="Instagram Kullanıcı Adı" value="${ileti.insta}" required><button style="background:#555;">Kaydet</button></form>${list}`, "admin", true));
+});
+
+app.post('/upload-manzara', upload.single('manzara'), async (req, res) => {
+    if(req.file) {
+        const db = await getDb();
+        const yeniAd = 'manzara_' + Date.now() + '.jpg';
+        fs.renameSync(req.file.path, path.join('public/uploads/', yeniAd));
+        await db.updateOne({ id: "veriler" }, { $push: { manzaralar: '/uploads/' + yeniAd } }, { upsert: true });
+    }
+    res.redirect('/admin-paneli?msg=Manzara Eklendi');
+});
+
+app.post('/sil-manzara', async (req, res) => {
+    const { resimYolu } = req.body;
+    const db = await getDb();
+    const dosyaAdi = path.basename(resimYolu);
+    const tamYol = path.join('public/uploads/', dosyaAdi);
+    if (fs.existsSync(tamYol)) fs.unlinkSync(tamYol);
+    await db.updateOne({ id: "veriler" }, { $pull: { manzaralar: resimYolu } });
+    res.redirect('/admin-paneli?msg=Manzara Silindi');
 });
 
 app.post('/kisi-ekle', async (req, res) => {
