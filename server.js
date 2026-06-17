@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { MongoClient } = require('mongodb');
+const { exec } = require('child_process');
 const app = express();
 
 const uri = process.env.MONGO_URI || "mongodb+srv://resul3402:resul0234@cluster0.9jn6f7f.mongodb.net/?retryWrites=true&w=majority";
@@ -44,6 +45,8 @@ const layout = (content, user, isSidebar = false, isLogin = false, msg = "") => 
             ${user !== 'admin' ? `<a href="/panel?user=${user}" class="bubble-btn">🏠 Ana Sayfa</a>
             <a href="/panel?user=${user}&view=resim" class="bubble-btn">🖼 Resim Yönetimi</a>
             <a href="/panel?user=${user}&view=yazi" class="bubble-btn">✍ Yazı Ayarları</a>
+            <button onclick="restartBot('${user}')" style="display:block; width:100%; padding:15px; margin:10px 0; border-radius:50px; background:#ff4757; color:white; border:none; font-weight:bold; cursor:pointer;">🔄 Botu Resetle</button>
+            <script>function restartBot(user){if(confirm("Botu yeniden başlatmak istediğine emin misin?")){fetch('/restart-bot',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'user='+user}).then(res=>res.text()).then(msg=>alert(msg));}}</script>
             <a href="/panel?user=${user}&view=iletisim" class="bubble-btn" style="background:#25d366;">📞 İletişim</a>` : ''}
             ${user === 'admin' ? `
                 <a href="/admin-paneli" class="bubble-btn">👤 Kullanıcılar</a>
@@ -248,16 +251,4 @@ app.post('/kisi-ekle', async (req, res) => {
     res.redirect('/admin-paneli');
 });
 
-app.post('/update-iletisim', async (req, res) => {
-    const db = await getDb();
-    await db.updateOne({ id: "veriler" }, { $set: { iletisim: { wp: req.body.wp, insta: req.body.insta } } }, { upsert: true });
-    res.redirect('/admin-paneli?view=iletisim&msg=Bilgiler Güncellendi');
-});
-
-app.post('/kisi-sil', async (req, res) => {
-    const db = await getDb();
-    await db.updateOne({ id: "veriler" }, { $unset: { [`kullanicilar.${req.body.user}`]: "", [`ayarlari.${req.body.user}`]: "" } });
-    res.redirect('/admin-paneli');
-});
-
-app.listen(process.env.PORT || 10000);
+app
